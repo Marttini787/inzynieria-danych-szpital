@@ -4,21 +4,35 @@ import pandas as pd
 from google.cloud import bigquery
 
 # ============================================================
-# KONFIGURACJA -- tu wprowadzacie zmiany na labie
+# KONFIGURACJA -- sekwencyjne ładowanie wg relacji PK -> FK
 # ============================================================
 
 NEON_CONNECTION_STRING = os.environ["NEON_CONNECTION_STRING"]
 BQ_PROJECT_ID = os.environ["BQ_PROJECT_ID"]
 BQ_DATASET = os.environ["BQ_DATASET"]
-BQ_TABLE = os.environ["BQ_TABLE"]
 
-SOURCE_TABLE = "pacjenci"
+# Kolejność tabel zgodna z hierarchią kluczy głównych i obcych (PK -> FK)
+TABLES_IN_ORDER = [
+    "personel_medyczny",
+    "komorki",
+    "pacjenci",
+    "zabiegi",
+    "leki",
+    "pobyty",
+    "leki_na_pobyt",
+    "zabiegi_na_pobyt",
+]
+
 INCREMENTAL_COLUMN = "updated_at"
-LOAD_MODE = "incremental"
+
+# Na start ustawiamy "full_refresh", aby załadować wszystkie 8 tabel;
+# następnie zmienimy na "incremental" do testu dodawania i edycji rekordów.
+LOAD_MODE = "full_refresh"
 
 # ============================================================
 # LOGIKA
 # ============================================================
+
 
 def get_last_loaded_timestamp(bq_client: bigquery.Client, table_ref: str):
     query = f"SELECT MAX({INCREMENTAL_COLUMN}) AS max_ts FROM `{table_ref}`"
@@ -29,21 +43,22 @@ def get_last_loaded_timestamp(bq_client: bigquery.Client, table_ref: str):
     except Exception:
         return None
 
-def extract_from_neon(mode: str, last_ts=None) -> pd.DataFrame:
+
+def extract_from_neon(table_name: str, mode: str, last_ts=None) -> pd.DataFrame:
     conn = psycopg2.connect(NEON_CONNECTION_STRING)
     try:
         if mode == "incremental" and last_ts is not None:
-            query = f"SELECT * FROM {SOURCE_TABLE} WHERE {INCREMENTAL_COLUMN} > %s"
+            query = f"SELECT * FROM {table_name} WHERE {INCREMENTAL_COLUMN} > %s"
             df = pd.read_sql(query, conn, params=(last_ts,))
         else:
-            query = f"SELECT * FROM {SOURCE_TABLE}"
+            query = f"SELECT * FROM {table_name}"
             df = pd.read_sql(query, conn)
     finally:
         conn.close()
     return df
 
-def load_to_bigquery(df: pd.DataFrame, table_ref: str, mode: str):
-    bq_client = bigquery.Client()
+
+def load_to_bigquery(bq_client: bigquery.Client, df: pd.DataFrame, table_ref: str, mode: str):
     write_disposition = (
         bigquery.WriteDisposition.WRITE_TRUNCATE
         if mode == "full_refresh"
@@ -54,24 +69,29 @@ def load_to_bigquery(df: pd.DataFrame, table_ref: str, mode: str):
     job.result()
     return job
 
+
 def main():
-    table_ref = f"{BQ_PROJECT_ID}.{BQ_DATASET}.{BQ_TABLE}"
     bq_client = bigquery.Client()
 
-    last_ts = None
-    if LOAD_MODE == "incremental":
-        last_ts = get_last_loaded_timestamp(bq_client, table_ref)
-        print(f"Ostatni załadowany timestamp w BigQuery: {last_ts}")
+    for table_name in TABLES_IN_ORDER:
+        print(f"--- Przetwarzanie tabeli: {table_name} ---")
+        table_ref = f"{BQ_PROJECT_ID}.{BQ_DATASET}.{table_name}"
 
-    df = extract_from_neon(LOAD_MODE, last_ts)
-    print(f"Wyciągnięto {len(df)} wierszy z Neon (tabela źródłowa: {SOURCE_TABLE})")
+        last_ts = None
+        if LOAD_MODE == "incremental":
+            last_ts = get_last_loaded_timestamp(bq_client, table_ref)
+            print(f"[{table_name}] Ostatni załadowany timestamp w BigQuery: {last_ts}")
 
-    if df.empty:
-        print("Brak nowych danych do załadowania -- kończę.")
-        return
+        df = extract_from_neon(table_name, LOAD_MODE, last_ts)
+        print(f"[{table_name}] Wyciągnięto {len(df)} wierszy z Neon")
 
-    job = load_to_bigquery(df, table_ref, LOAD_MODE)
-    print(f"Załadowano {job.output_rows} wierszy do {table_ref} (tryb: {LOAD_MODE})")
+        if df.empty:
+            print(f"[{table_name}] Brak nowych danych -- pomijam.")
+            continue
+
+        job = load_to_bigquery(bq_client, df, table_ref, LOAD_MODE)
+        print(f"[{table_name}] Załadowano {job.output_rows} wierszy do {table_ref} (tryb: {LOAD_MODE})")
+
 
 if __name__ == "__main__":
     main()

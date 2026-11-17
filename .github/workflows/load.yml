@@ -1,10 +1,12 @@
-name: Load NeonDB to BigQuery
+name: Load data from Neon to BigQuery
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
-  load-data:
+  extract-and-load:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,22 +16,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Set up Google Cloud Auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Write GCP service account key to file
+        run: echo '${{ secrets.GCP_SA_KEY }}' > gcp-key.json
 
-      - name: Run ETL script
+      - name: Run extract and load script
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DESTINATION__BIGQUERY__PROJECT_ID: inzynieria-danych-szpital
-          DESTINATION__BIGQUERY__LOCATION: europe-central2
+          NEON_CONNECTION_STRING: ${{ secrets.DATABASE_URL }}
+          GOOGLE_APPLICATION_CREDENTIALS: gcp-key.json
+          BQ_PROJECT_ID: inzynieria-danych-szpital
           BQ_DATASET: raw_data
-        run: |
-          python load.py
+          BQ_TABLE: pacjenci
+        run: python extract_load.py
+
+      - name: Clean up key file
+        if: always()
+        run: rm -f gcp-key.json

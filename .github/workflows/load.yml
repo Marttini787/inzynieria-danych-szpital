@@ -24,13 +24,12 @@ jobs:
       - name: Write GCP service account key to file
         run: echo '${{ secrets.GCP_SA_KEY }}' > gcp-key.json
 
-      - name: Run extract and load script
+      - name: Run sequential extract and load script
         env:
           NEON_CONNECTION_STRING: ${{ secrets.DATABASE_URL }}
           GOOGLE_APPLICATION_CREDENTIALS: gcp-key.json
           BQ_PROJECT_ID: inzynieria-danych-szpital
           BQ_DATASET: raw_data
-          BQ_TABLE: pacjenci
         run: python extract_load.py
 
       - name: Clean up key file

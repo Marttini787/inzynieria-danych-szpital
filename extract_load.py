@@ -27,7 +27,7 @@ INCREMENTAL_COLUMN = "updated_at"
 
 # Na start ustawiamy "full_refresh", aby załadować wszystkie 8 tabel;
 # następnie zmienimy na "incremental" do testu dodawania i edycji rekordów.
-LOAD_MODE = "full_refresh"
+LOAD_MODE = "incremental"
 
 # ============================================================
 # LOGIKA

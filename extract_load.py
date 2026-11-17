@@ -14,7 +14,7 @@ BQ_TABLE = os.environ["BQ_TABLE"]
 
 SOURCE_TABLE = "pacjenci"
 INCREMENTAL_COLUMN = "updated_at"
-LOAD_MODE = "full_refresh"
+LOAD_MODE = "incremental"
 
 # ============================================================
 # LOGIKA

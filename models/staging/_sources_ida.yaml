@@ -1,0 +1,7 @@
+sources:
+  - name: szpital_raw
+    database: inzynieria-danych-szpital
+    schema: raw_data
+    tables:
+      - name: pacjenci
+        identifier: pacjenci

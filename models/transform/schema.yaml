@@ -1,0 +1,126 @@
+version: 2
+
+models:
+  - name: trf_pacjenci_scd1
+    description: "Aktualna wersja rekordów pacjentów (SCD typu 1)."
+    columns:
+      - name: id
+        description: "Klucz biznesowy pacjenta."
+        data_tests:
+          - unique
+          - not_null
+      - name: imie
+        description: "Imię pacjenta."
+        data_tests:
+          - not_null
+      - name: nazwisko
+        description: "Nazwisko pacjenta."
+        data_tests:
+          - not_null
+      - name: pesel
+        description: "Numer PESEL pacjenta."
+        data_tests:
+          - unique
+          - not_null
+      - name: data_urodzenia
+        description: "Data urodzenia pacjenta."
+      - name: plec
+        description: "Płeć pacjenta."
+      - name: adres
+        description: "Adres zamieszkania pacjenta."
+      - name: telefon
+        description: "Numer telefonu kontaktowego pacjenta."
+      - name: updated_at
+        description: "Znacznik czasu ostatniej modyfikacji rekordu."
+        data_tests:
+          - not_null
+
+  - name: trf_pacjenci_scd2
+    description: "Pełna historia zmian danych pacjentów (SCD typu 2)."
+    columns:
+      - name: pacjenci_sk
+        description: "Klucz zastępczy (surrogate key) wersji rekordu pacjenta."
+        data_tests:
+          - unique
+          - not_null
+      - name: id
+        description: "Klucz biznesowy pacjenta (może występować wielokrotnie dla różnych wersji)."
+        data_tests:
+          - not_null
+      - name: imie
+        description: "Imię pacjenta."
+      - name: nazwisko
+        description: "Nazwisko pacjenta."
+      - name: pesel
+        description: "Numer PESEL pacjenta."
+      - name: data_urodzenia
+        description: "Data urodzenia pacjenta."
+      - name: plec
+        description: "Płeć pacjenta."
+      - name: adres
+        description: "Adres zamieszkania pacjenta."
+      - name: telefon
+        description: "Numer telefonu kontaktowego pacjenta."
+      - name: valid_from
+        description: "Data początku obowiązywania danej wersji rekordu."
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: "Data końca obowiązywania danej wersji rekordu (NULL dla wersji aktualnej)."
+      - name: is_active
+        description: "Flaga określająca, czy wersja rekordu jest aktualnie aktywna."
+        data_tests:
+          - not_null
+
+  - name: trf_pacjenci_scd2_uf
+    description: "Wersja user-friendly modelu SCD2 dla pacjentów rozwinięta na poszczególne dni."
+    columns:
+      - name: id
+        description: "Klucz biznesowy pacjenta."
+        data_tests:
+          - not_null
+      - name: imie
+        description: "Imię pacjenta."
+      - name: nazwisko
+        description: "Nazwisko pacjenta."
+      - name: pesel
+        description: "Numer PESEL pacjenta."
+      - name: data_urodzenia
+        description: "Data urodzenia pacjenta."
+      - name: plec
+        description: "Płeć pacjenta."
+      - name: adres
+        description: "Adres zamieszkania pacjenta."
+      - name: telefon
+        description: "Numer telefonu kontaktowego pacjenta."
+      - name: valid_from
+        description: "Data początku obowiązywania wersji."
+      - name: valid_to
+        description: "Data końca obowiązywania wersji."
+      - name: is_active
+        description: "Flaga aktywności wersji rekordu."
+      - name: reference_date
+        description: "Konkretna data kalendarzowa, której dotyczy dany wiersz."
+        data_tests:
+          - not_null
+
+  - name: trf_pobyty_scd1
+    description: "Aktualna wersja rekordów pobytów szpitalnych (SCD typu 1)."
+    columns:
+      - name: id
+        description: "Klucz biznesowy pobytu."
+        data_tests:
+          - unique
+          - not_null
+      - name: pacjent_id
+        description: "Klucz obcy wskazujący na pacjenta w modelu trf_pacjenci_scd1."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('trf_pacjenci_scd1')
+                field: id
+      - name: updated_at
+        description: "Znacznik czasu ostatniej modyfikacji pobytu."
+        data_tests:
+          - not_null

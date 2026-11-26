@@ -5,3 +5,5 @@ sources:
     tables:
       - name: pacjenci
         identifier: pacjenci
+      - name: pobyty
+        identifier: pobyty
